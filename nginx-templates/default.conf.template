@@ -1,5 +1,5 @@
 map $http_x_pexels_key $pexels_auth_header {
-    default "Bearer $http_x_pexels_key";
+    default $http_x_pexels_key;
     ""      "";
 }
 

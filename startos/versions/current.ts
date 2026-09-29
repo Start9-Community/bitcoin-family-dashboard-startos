@@ -4,15 +4,15 @@ export const current = VersionInfo.of({
   version: '0.2.2:1',
   releaseNotes: {
     en_US:
-      'Fixed watch-only balances failing against Bitcoin Core 31.1: the helper omitted the JSON-RPC params field on argument-less calls (listwalletdir), which strict RPC parsing now rejects, cascading into "No balance source available".',
+      'Fixed watch-only balances failing against Bitcoin Core 31.1 (missing params field in JSON-RPC) and restored Pexels background photos (the proxy sent the API key in the wrong format, so Pexels returned 401).',
     es_ES:
-      'Corregido el fallo de los saldos de solo vigilancia con Bitcoin Core 31.1: el asistente omitía el campo params de JSON-RPC en las llamadas sin argumentos (listwalletdir), que el análisis estricto de RPC ahora rechaza.',
+      'Corregido el fallo de los saldos de solo vigilancia con Bitcoin Core 31.1 (falta el campo params en JSON-RPC) y restauradas las fotos de fondo de Pexels (el proxy enviaba la clave en un formato incorrecto y Pexels devolvía 401).',
     de_DE:
-      'Fehler bei Watch-only-Salden mit Bitcoin Core 31.1 behoben: Der Helfer ließ das JSON-RPC-Feld params bei Aufrufen ohne Argumente (listwalletdir) weg, was die strenge RPC-Analyse nun zurückweist.',
+      'Fehler bei Watch-only-Salden mit Bitcoin Core 31.1 behoben (fehlendes params-Feld im JSON-RPC) und Pexels-Hintergrundbilder wiederhergestellt (der Proxy sendete den API-Schlüssel im falschen Format, Pexels antwortete mit 401).',
     pl_PL:
-      'Naprawiono błędy sald tylko do obserwacji z Bitcoin Core 31.1: pomocnik pomijał pole params JSON-RPC w wywołaniach bez argumentów (listwalletdir), które ścisła analiza RPC teraz odrzuca.',
+      'Naprawiono błędy sald tylko do obserwacji z Bitcoin Core 31.1 (brak pola params w JSON-RPC) i przywrócono zdjęcia tła z Pexels (serwer proxy wysyłał klucz API w złym formacie, przez co Pexels zwracał 401).',
     fr_FR:
-      "Correction des soldes en surveillance seule échouant avec Bitcoin Core 31.1 : l'assistant omettait le champ params JSON-RPC des appels sans argument (listwalletdir), désormais rejeté par l'analyse RPC stricte.",
+      "Correction des soldes en surveillance seule échouant avec Bitcoin Core 31.1 (champ params manquant dans le JSON-RPC) et restauration des photos d'arrière-plan Pexels (le proxy envoyait la clé API dans un format incorrect, d'où le 401 de Pexels).",
   },
   migrations: {
     up: async ({ effects }) => {},
