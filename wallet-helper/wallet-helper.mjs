@@ -261,7 +261,14 @@ async function balanceFromBitcoind(parsed, memberName) {
     return null
   }
 
-  const rpc = async (method, params, wallet = false) => {
+  const rpc = async (method, params = [], wallet = false) => {
+    // params MUST always be sent: JSON.stringify drops the key when it is
+    // undefined, and Bitcoin Core 31.1 (strict JSON-RPC parsing; verified
+    // on-box 2026-09-29) rejects the body with -32700 "missing field
+    // `params`". Older Core tolerated the omission. This broke listwalletdir
+    // (the only call with no args) on Core 31.1, which cascaded into false
+    // "wallet missing" → createwallet → -4 "Database already exists" →
+    // "No balance source available".
     const url = wallet ? `${BITCOIND_RPC}/wallet/${WATCH_WALLET}` : `${BITCOIND_RPC}/`
     const res = await fetch(url, {
       method: 'POST',
