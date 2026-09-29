@@ -37,7 +37,7 @@ Hover over a member's avatar on the dashboard and click it to upload a picture. 
 ### Actions
 
 - **Manage Family Members** — add, remove and edit members, their holdings and their watch-only wallets.
-- **Configure Dashboard** — set the dashboard title, choose the price source (Coinbase Exchange, Binance, Bitstamp, or your own API), and turn rotating background photos on with a free [Pexels API key](https://www.pexels.com/api/). Changing the price source restarts the service.
+- **Configure Dashboard** — set the dashboard title, choose the price source (Coinbase Exchange, Binance, Bitstamp, or your own API), and turn rotating background photos on with a free [Pexels API key](https://www.pexels.com/api/). Changing the price source restarts the service. When background photos are shown, a small credit appears in the bottom-right corner linking Pexels and the photographer, as the Pexels API guidelines ask.
 
 ## Limitations
 

@@ -79,6 +79,8 @@ It is seeded on every container init with `merge(effects, {})`, so a fresh insta
 
 The Pexels API key is served to the browser as part of `config.json`, because the page itself sends it with every Pexels request. Anyone who can reach the dashboard can read it.
 
+While a Pexels background is displayed, the page shows a small attribution pill in the bottom-right corner — "Photos provided by Pexels · Photo by <photographer>" — with links to Pexels and to the photo page, as the [Pexels API guidelines](https://www.pexels.com/api/documentation/#guidelines) require. It disappears when backgrounds are disabled or no photo is shown.
+
 ## Dependencies
 
 One optional dependency.
