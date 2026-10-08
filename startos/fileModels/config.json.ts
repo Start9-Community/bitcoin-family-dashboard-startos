@@ -3,7 +3,7 @@ import { sdk } from '../sdk'
 
 export const defaultTitle = 'Bitcoin Family Dashboard'
 
-const familyMemberShape = z.object({
+const familyMemberShape = z.looseObject({
   name: z.string(),
   avatar: z.string().catch(''),
   btcAmount: z.number().catch(0),
@@ -17,25 +17,25 @@ export const priceSourceTypes = [
   'custom',
 ] as const
 
-const priceSourceShape = z.object({
+const priceSourceShape = z.looseObject({
   type: z.enum(priceSourceTypes).catch('coinbase'),
   apiUrl: z.string().catch(''),
 })
 
-const pexelsShape = z.object({
+const pexelsShape = z.looseObject({
   enabled: z.boolean().catch(false),
   apiKey: z.string().catch(''),
 })
 
 export const balanceSources = ['bitcoind', 'mempool'] as const
 
-const watchOnlyWalletShape = z.object({
+const watchOnlyWalletShape = z.looseObject({
   memberName: z.string(),
   descriptor: z.string(),
   source: z.enum(balanceSources).catch('bitcoind'),
 })
 
-const shape = z.object({
+const shape = z.looseObject({
   title: z.string().catch(defaultTitle),
   familyMembers: z
     .array(familyMemberShape)

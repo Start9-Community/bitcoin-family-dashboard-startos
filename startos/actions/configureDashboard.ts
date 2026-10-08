@@ -7,13 +7,17 @@ const { InputSpec, Value, Variants } = sdk
 const inputSpec = InputSpec.of({
   title: Value.text({
     name: i18n('Dashboard Title'),
-    description: i18n('The heading shown at the top of the dashboard'),
+    description: i18n(
+      "Shown as the dashboard's heading and as the browser tab's title",
+    ),
     required: true,
     default: defaultTitle,
   }),
   priceSource: Value.union({
     name: i18n('Price Source'),
-    description: i18n('Where the live BTC price comes from'),
+    description: i18n(
+      "Which service supplies the live BTC price, in USD. The price charts come from Binance and blockchain.com whichever you choose.\n- Coinbase Exchange: the price from Coinbase Exchange's public ticker\n- Binance: the price from Binance's public market-data ticker\n- Bitstamp: the price from Bitstamp's public ticker\n- Custom API: the price from an endpoint you name, in one of the JSON shapes described under API URL",
+    ),
     default: 'coinbase',
     variants: Variants.of({
       coinbase: { name: i18n('Coinbase Exchange'), spec: InputSpec.of({}) },
@@ -25,7 +29,7 @@ const inputSpec = InputSpec.of({
           apiUrl: Value.text({
             name: i18n('API URL'),
             description: i18n(
-              'An HTTPS endpoint returning JSON with either {"price": ..., "change24h": ...} or the CoinGecko shape {"bitcoin": {"usd": ..., "usd_24h_change": ...}}',
+              'A URL returning JSON with either {"price": ..., "change24h": ...} or the CoinGecko shape {"bitcoin": {"usd": ..., "usd_24h_change": ...}}',
             ),
             required: true,
             default: null,
@@ -50,7 +54,9 @@ const inputSpec = InputSpec.of({
   }),
   pexelsApiKey: Value.text({
     name: i18n('Pexels API Key'),
-    description: i18n('Create a free key at https://www.pexels.com/api/'),
+    description: i18n(
+      'Create a free key at https://www.pexels.com/api/. Anyone who can open the dashboard can read this key.',
+    ),
     required: false,
     default: null,
     masked: true,

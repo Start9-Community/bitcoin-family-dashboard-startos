@@ -8,6 +8,7 @@
  * bitcoind package is installed) or from public address APIs with
  * multi-provider fallback.
  */
+import { createHash } from 'node:crypto'
 import http from 'node:http'
 import { createRequire } from 'node:module'
 import { BIP32Factory } from 'bip32'
@@ -235,70 +236,85 @@ function buildScanDescriptor(parsed, branch) {
 
 const SCAN_RANGE = 300 // descriptor import range (like importdescriptors range)
 
-/** Wallet name for a member: watchonly_<slug> so each member's balance is
- *  isolated (a shared wallet would total across all descriptors). */
-function walletNameFor(memberName) {
-  const slug = memberName.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20)
-  return `watchonly_${slug || 'member'}`
-}
-
-/** Query the whole wallet balance via Bitcoin Core RPC using a watch-only
- *  wallet: import the descriptor once (range [0, N]), then getbalance —
- *  near-instant on every refresh (no full UTXO scan per request).
- *  Each member gets their own wallet so balances stay isolated. */
-async function balanceFromBitcoind(parsed, memberName) {
-  const WATCH_WALLET = walletNameFor(memberName)
+/** Bitcoin Core JSON-RPC call. Resolves to { result } or { error } (bitcoind
+ *  sends JSON-RPC errors with a non-2xx status), or null when bitcoind gave
+ *  no JSON-RPC reply at all. */
+async function bitcoindRpc(method, params = [], wallet) {
   let auth
   try {
     const fs = await import('node:fs')
     // The whole-volume mount resolves the chain-data dir directly at the
     // mountpoint, so the cookie is at /mnt/bitcoind/.cookie (not main/.cookie).
     const cookie = fs.readFileSync('/mnt/bitcoind/.cookie', 'utf8').trim()
-    const [user, pass] = cookie.split(':')
-    auth = Buffer.from(`${user}:${pass}`).toString('base64')
+    auth = Buffer.from(cookie).toString('base64')
   } catch (e) {
     console.error(`Could not read bitcoind cookie: ${e.message}`)
     return null
   }
-
-  const rpc = async (method, params = [], wallet = false) => {
-    // params MUST always be sent: JSON.stringify drops the key when it is
-    // undefined, and Bitcoin Core 31.1 (strict JSON-RPC parsing; verified
-    // on-box 2026-09-29) rejects the body with -32700 "missing field
-    // `params`". Older Core tolerated the omission. This broke listwalletdir
-    // (the only call with no args) on Core 31.1, which cascaded into false
-    // "wallet missing" → createwallet → -4 "Database already exists" →
-    // "No balance source available".
-    const url = wallet ? `${BITCOIND_RPC}/wallet/${WATCH_WALLET}` : `${BITCOIND_RPC}/`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
-      body: JSON.stringify({ jsonrpc: '1.0', id: 'wallet-helper', method, params }),
-    })
-    if (!res.ok) {
-      const txt = await res.text()
-      console.error(`bitcoind RPC error ${method}: ${res.status} ${txt.slice(0, 160)}`)
-      return null
-    }
-    const data = await res.json()
-    if (data.error) {
-      // Wallet not found / not loaded — sentinel so caller creates it
-      if (data.error.code === -18) return { walletNotFound: true }
-      console.error(`bitcoind RPC error ${method}: ${JSON.stringify(data.error)}`)
-      return null
-    }
-    return data.result
+  // params MUST always be sent: Bitcoin Core 31.1 (strict JSON-RPC parsing;
+  // verified on-box 2026-09-29) rejects a body without it with -32700.
+  const url = wallet ? `${BITCOIND_RPC}/wallet/${wallet}` : `${BITCOIND_RPC}/`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Basic ${auth}` },
+    body: JSON.stringify({ jsonrpc: '1.0', id: 'wallet-helper', method, params }),
+  })
+  const txt = await res.text()
+  let data
+  try {
+    data = JSON.parse(txt)
+  } catch {
+    console.error(`bitcoind RPC error ${method}: ${res.status} ${txt.slice(0, 160)}`)
+    return null
   }
+  if (data.error) {
+    console.error(`bitcoind RPC error ${method}: ${JSON.stringify(data.error)}`)
+    return { error: data.error }
+  }
+  return { result: data.result }
+}
 
-  // 1. Ensure the watch-only wallet exists (disable_private_keys=true so
-  // watch-only descriptors can be imported). Fresh name => no stale-wallet
-  // conflict.
-  const wallets = await rpc('listwalletdir')
-  const exists = wallets?.wallets?.some((w) => w.name === WATCH_WALLET)
-  if (!exists) {
-    const created = await rpc('createwallet', [WATCH_WALLET, true, false]) // disable_private_keys=true, blank=false
-    if (!created) {
-      console.error('Could not create watch-only wallet')
+/** The checksummed scan descriptors of a parsed descriptor, and the name of
+ *  the watch-only wallet holding exactly them, so two members never share a
+ *  wallet and an edited descriptor gets a fresh one. */
+async function watchWalletFor(parsed) {
+  const branches = parsed.paths && parsed.paths.length ? parsed.paths : ['0']
+  const descriptors = []
+  for (const b of branches) {
+    const rawDesc = buildScanDescriptor(parsed, b)
+    const info = (await bitcoindRpc('getdescriptorinfo', [rawDesc]))?.result
+    if (!info?.descriptor) {
+      console.error(`getdescriptorinfo failed for ${rawDesc}`)
+      return null
+    }
+    descriptors.push({ desc: info.descriptor, internal: b === '1' })
+  }
+  const hash = createHash('sha256')
+    .update(descriptors.map((d) => d.desc).join('\n'))
+    .digest('hex')
+  return { name: `watchonly_${hash.slice(0, 16)}`, descriptors }
+}
+
+/** Query the whole wallet balance via Bitcoin Core RPC using a watch-only
+ *  wallet: import the descriptor once (range [0, N]), then getbalance —
+ *  near-instant on every refresh (no full UTXO scan per request). */
+async function balanceFromBitcoind(parsed) {
+  const watch = await watchWalletFor(parsed)
+  if (!watch) return null
+
+  // 1. Ensure the watch-only wallet exists and is loaded: bitcoind reloads
+  // only the wallets in its startup list after a restart, and these are not
+  // in it. RPC_METHOD_NOT_FOUND means Bitcoin runs with its wallet disabled.
+  const loaded = await bitcoindRpc('listwallets')
+  if (loaded?.error?.code === -32601) return { walletDisabled: true }
+  if (!loaded?.result) return null
+  if (!loaded.result.includes(watch.name)) {
+    const onDisk = (await bitcoindRpc('listwalletdir'))?.result
+    const opened = onDisk?.wallets?.some((w) => w.name === watch.name)
+      ? await bitcoindRpc('loadwallet', [watch.name])
+      : await bitcoindRpc('createwallet', [watch.name, true, false]) // disable_private_keys=true, blank=false
+    if (!opened?.result) {
+      console.error(`Could not open watch-only wallet ${watch.name}`)
       return null
     }
   }
@@ -306,40 +322,22 @@ async function balanceFromBitcoind(parsed, memberName) {
   // 2. Import any descriptors NOT already in the wallet. Already-imported
   // ones (e.g. from a prior install with a different range) are skipped —
   // re-importing with a smaller range fails with 'new range must include
-  // current range'. getdescriptorinfo provides the checksum Core requires.
-  const branches = parsed.paths && parsed.paths.length ? parsed.paths : ['0']
-  const importRequests = []
-  for (const b of branches) {
-    const rawDesc = buildScanDescriptor(parsed, b)
-    const info = await rpc('getdescriptorinfo', [rawDesc])
-    if (!info || !info.descriptor) {
-      console.error(`getdescriptorinfo failed for ${rawDesc}`)
-      return null
-    }
-    // Is this descriptor already imported? (listdescriptors takes only
-    // `private` bool — filter in JS)
-    const existing = await rpc('listdescriptors', [false], true)
-    const alreadyImported = existing?.descriptors?.some((d) => d.desc === info.descriptor)
-    if (!alreadyImported) {
-      importRequests.push({
-        desc: info.descriptor, // includes #checksum
-        // Full-history rescan (timestamp 0) on first import so funds from ANY
-        // date are seen. Previously 1704067200 (2024-01-01) — but real wallets
-        // can hold funds older than 2024 (verified: Satoshi has a funded
-        // address at index 37 whose tx is from April 2023; the 2024 cutoff
-        // made bitcoind under-report 0.02743255 instead of the true
-        // 0.05143255). The rescan is one-time (a few minutes); after import,
-        // getbalance is instant.
-        timestamp: 0,
-        range: [0, SCAN_RANGE],
-        active: true,
-        internal: b === '1',
-        watchonly: true,
-      })
-    }
-  }
+  // current range'.
+  const existing = (await bitcoindRpc('listdescriptors', [false], watch.name))?.result
+  if (!existing) return null
+  const importRequests = watch.descriptors
+    .filter(({ desc }) => !existing.descriptors.some((d) => d.desc === desc))
+    .map(({ desc, internal }) => ({
+      desc, // includes #checksum
+      // Full-history rescan so funds from any date are seen; one-time.
+      timestamp: 0,
+      range: [0, SCAN_RANGE],
+      active: true,
+      internal,
+      watchonly: true,
+    }))
   if (importRequests.length > 0) {
-    const importResult = await rpc('importdescriptors', [importRequests], true)
+    const importResult = (await bitcoindRpc('importdescriptors', [importRequests], watch.name))?.result
     if (!importResult) return null
     const failed = importResult.filter((r) => !r.success)
     if (failed.length > 0) {
@@ -349,12 +347,30 @@ async function balanceFromBitcoind(parsed, memberName) {
   }
 
   // 3. A balance read mid-rescan is partial: report the rescan instead.
-  const info = await rpc('getwalletinfo', [], true)
+  const info = (await bitcoindRpc('getwalletinfo', [], watch.name))?.result
   if (info?.scanning) return { rescanning: info.scanning.progress ?? 0 }
 
-  const bal = await rpc('getbalance', ['*', 1, true], true) // include watchonly
-  if (bal === null) return null
+  const bal = (await bitcoindRpc('getbalance', ['*', 1, true], watch.name))?.result // include watchonly
+  if (typeof bal !== 'number') return null
   return Math.round(bal * 1e8)
+}
+
+/** Unload the watch-only wallets this helper loaded for descriptors that are
+ *  no longer configured. Skipped unless every configured wallet's name is
+ *  known, so a wallet still in use is never unloaded mid-rescan. */
+async function unloadStaleWallets(wallets) {
+  const keep = new Set()
+  for (const w of wallets) {
+    const watch = await watchWalletFor(parseDescriptor(w.descriptor))
+    if (!watch) return
+    keep.add(watch.name)
+  }
+  const loaded = (await bitcoindRpc('listwallets'))?.result ?? []
+  for (const name of loaded) {
+    if (name.startsWith('watchonly_') && !keep.has(name)) {
+      await bitcoindRpc('unloadwallet', [name])
+    }
+  }
 }
 
 const GAP_LIMIT = 20 // stop scanning after this many unused addresses past the last used one
@@ -691,7 +707,16 @@ async function runBalanceScan() {
 
         for (const src of order) {
           if (src === 'bitcoind' && BITCOIND_RPC) {
-            const r = await balanceFromBitcoind(parsed, w.memberName)
+            const r = await balanceFromBitcoind(parsed)
+            if (r?.walletDisabled) {
+              return {
+                memberName: w.memberName,
+                descriptor: w.descriptor,
+                balanceSats: null,
+                walletDisabled: true,
+                error: 'Bitcoin wallet is disabled',
+              }
+            }
             if (r !== null && typeof r === 'object') {
               scanStatus = { scanning: true, member: w.memberName, lastScanAt: scanStatus.lastScanAt, note: 'rescanning', progress: r.rescanning }
               return {
@@ -768,13 +793,26 @@ async function runBalanceScan() {
       results.push(result)
     }
 
-    const pending = results.find((r) => typeof r.balanceSats !== 'number')
+    const usesBitcoind =
+      wallets.some((w) => (w.source ?? 'bitcoind') === 'bitcoind') || results.some((r) => r.source === 'bitcoind')
+    if (BITCOIND_RPC && usesBitcoind && !results.some((r) => r.walletDisabled)) {
+      await unloadStaleWallets(wallets).catch((e) => console.error(`unloadStaleWallets: ${e.message}`))
+    }
+
+    const pending =
+      results.find((r) => r.walletDisabled) ?? results.find((r) => typeof r.balanceSats !== 'number')
     needsBalance = !!pending
     scanStatus = {
       scanning: false,
       member: pending?.memberName ?? '',
       lastScanAt: new Date().toISOString(),
-      note: !pending ? '' : typeof pending.rescanning === 'number' ? 'rescanning' : 'waiting for providers',
+      note: !pending
+        ? ''
+        : pending.walletDisabled
+          ? 'wallet disabled'
+          : typeof pending.rescanning === 'number'
+            ? 'rescanning'
+            : 'waiting for providers',
       progress: pending?.rescanning,
     }
 

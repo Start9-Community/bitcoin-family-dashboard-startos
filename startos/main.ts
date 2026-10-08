@@ -127,6 +127,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
             }
           }
 
+          if (status.note === 'wallet disabled') {
+            return {
+              result: 'failure',
+              message: i18n(
+                "Bitcoin's wallet is disabled. Turn on Enable Wallet in Bitcoin's Other Settings.",
+              ),
+            }
+          }
+
           if (!status.scanning) {
             return {
               result: 'success',
