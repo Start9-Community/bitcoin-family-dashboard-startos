@@ -1,5 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import { bitcoindDescription, long, short } from './i18n'
+import { long, short } from './i18n'
 
 export const manifest = setupManifest({
   id: 'bitcoin-family-dashboard',
@@ -16,16 +16,7 @@ export const manifest = setupManifest({
     dashboard: {
       source: { dockerBuild: {} },
       arch: ['x86_64', 'aarch64'],
-    },
-  },
-  dependencies: {
-    bitcoind: {
-      description: bitcoindDescription,
-      optional: true,
-      metadata: {
-        title: 'Bitcoin',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/bitcoin-core-startos/refs/heads/31.x/dep-icon.svg',
-      },
+      emulateMissing: false,
     },
   },
 })

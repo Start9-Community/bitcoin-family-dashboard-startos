@@ -18,19 +18,26 @@ Freshly scaffolded? Work the
 guide page, not a file in this repo — read it, don't copy it in.
 
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
-**Bugs and feature requests are GitHub issues on this repo** — file them as you find them.
+**Fix a defect you spot rather than reporting it** — you have the package open and the
+context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
+make: you can't pin the cause down, two defensible fixes exist, or it's too large to ride on
+the work in hand. An open issue is a report, not a queue — implement one when you're asked
+to or when it's labelled `Approved`, then close it with `Closes #<n>`.
+
 Don't record work in the repo instead: no `TODO.md`, no `NOTES.md`, no `PLAN.md`. What you
 verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **The application is the `bitcoin-family-dashboard/` submodule and is never edited here.** Fixes to
-  the page go to <https://github.com/wahidsaleemi/bitcoin-family-dashboard>; this repo moves the pin.
+- **Never edit the `bitcoin-family-dashboard/` submodule here** — page fixes go to
+  <https://github.com/wahidsaleemi/bitcoin-family-dashboard> and this repo moves the pin;
   `wallet-helper/` is this package's own code and is edited here.
-- **`config.json` is served to the browser verbatim** (`location = /config.json` in
-  `nginx-templates/default.conf.template`), so nothing that must stay private can go in it.
-- **A bitcoind-backed balance imports the descriptor with `timestamp: 0`.** That is a full rescan
-  on the user's node and the cost the README documents; don't "speed it up" with `'now'`, which
+- **Put nothing that must stay private in `config.json`** — nginx serves it to the browser verbatim
+  (`location = /config.json` in `nginx-templates/default.conf.template`).
+- **Keep `timestamp: 0` on the bitcoind descriptor import** — `'now'` looks faster but
   silently drops every pre-existing coin.

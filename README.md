@@ -37,19 +37,19 @@
 
 One image, built by this repo's `Dockerfile` from the `bitcoin-family-dashboard/` git submodule, which is pinned at an upstream commit — upstream ships no image and no releases.
 
-| Property      | Value                                                  |
-| ------------- | ------------------------------------------------------ |
-| Image         | `dashboard`, built from `./Dockerfile`                 |
+| Property      | Value                                                 |
+| ------------- | ----------------------------------------------------- |
+| Image         | `dashboard`, built from `./Dockerfile`                |
 | Base          | `nginx:alpine`, plus Alpine's `nodejs` for the helper |
-| Architectures | x86_64, aarch64                                        |
-| User          | root                                                   |
+| Architectures | x86_64, aarch64                                       |
+| User          | root                                                  |
 
 The image copies the dashboard's static files into nginx's web root and the wallet helper (`wallet-helper/`) into `/opt/wallet-helper` with its dependencies preinstalled. Two daemons share one subcontainer:
 
-| Subcontainer | Daemon          | Command                                       | Purpose                                                                    |
-| ------------ | --------------- | --------------------------------------------- | -------------------------------------------------------------------------- |
+| Subcontainer | Daemon          | Command                                        | Purpose                                                                     |
+| ------------ | --------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
 | `dashboard`  | `nginx`         | the image entrypoint (`nginx -g 'daemon off'`) | Serves the page and `config.json`, proxies the price, chart and Pexels APIs |
-| `dashboard`  | `wallet-helper` | `node /opt/wallet-helper/wallet-helper.mjs`   | Derives addresses from watch-only descriptors and resolves their balances  |
+| `dashboard`  | `wallet-helper` | `node /opt/wallet-helper/wallet-helper.mjs`    | Derives addresses from watch-only descriptors and resolves their balances   |
 
 `nginx-templates/default.conf.template` is rendered by the image's own entrypoint at start, with `PRICE_UPSTREAM` and `PRICE_HOST` substituted from the selected price source. Changing the price source therefore restarts the service. The helper listens on loopback port 8090 only; nginx proxies `/api/wallet-balance` to it.
 
@@ -57,8 +57,8 @@ The image copies the dashboard's static files into nginx's web root and the wall
 
 One volume, holding one file.
 
-| Volume | Mount Point | Purpose                                   |
-| ------ | ----------- | ----------------------------------------- |
+| Volume | Mount Point | Purpose                                    |
+| ------ | ----------- | ------------------------------------------ |
 | `main` | `/data`     | `config.json`, the dashboard's whole state |
 
 When Bitcoin is installed, its `main` volume is additionally mounted read-only at `/mnt/bitcoind` so the helper can read the RPC cookie. The mount is only declared while Bitcoin is present; the service restarts once when Bitcoin is installed or removed.
@@ -85,8 +85,8 @@ While a Pexels background is displayed, the page shows a small attribution pill 
 
 One optional dependency.
 
-| Dependency | Required | Health checks               | Mount                              | Why                                                                           |
-| ---------- | -------- | --------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
+| Dependency | Required | Health checks               | Mount                                | Why                                                                         |
+| ---------- | -------- | --------------------------- | ------------------------------------ | --------------------------------------------------------------------------- |
 | Bitcoin    | No       | `bitcoind`, `sync-progress` | `main` at `/mnt/bitcoind`, read-only | Resolves watch-only balances locally instead of through public address APIs |
 
 The dependency is declared as current only while a watch-only wallet is configured with **Bitcoin on this server** as its balance source; a dashboard without watch-only wallets, or one using public APIs, shows no dependency warning at all. The helper authenticates with Bitcoin's RPC cookie over the host bridge, so no RPC user is created.
@@ -95,8 +95,8 @@ The dependency is declared as current only while a watch-only wallet is configur
 
 One interface, serving the page.
 
-| Interface | Id   | Type | Port | Description                          |
-| --------- | ---- | ---- | ---- | ------------------------------------ |
+| Interface | Id   | Type | Port | Description                           |
+| --------- | ---- | ---- | ---- | ------------------------------------- |
 | Web UI    | `ui` | ui   | 80   | The dashboard, with its `config.json` |
 
 The port is bound on the `main` MultiHost over plain HTTP and is not masked. The dashboard has no login: whoever can open the address sees every member's holdings and can read `config.json`.
@@ -135,16 +135,22 @@ A custom price API must be an `http://` or `https://` URL returning JSON in eith
 
 ## Tasks
 
-None. This package raises no tasks, so the service is never held on a prompt and its ordinary controls are always available.
+One, raised on another service's page.
+
+| Task           | Raised on | Severity   | Raised when                                                                           | Cleared when                                                                                                       |
+| -------------- | --------- | ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Auto-Configure | Bitcoin   | `critical` | A watch-only wallet reads from Bitcoin while Bitcoin is pruned or its wallet disabled | Bitcoin is unpruned with its wallet enabled; hidden while no wallet reads from Bitcoin |
+
+It carries both settings, so accepting it applies them. Turning pruning off on a node that was pruned means re-downloading the chain. Disabling the dependency hides the task rather than clearing it; it returns when the dependency is enabled if the settings still need changing.
 
 ## Health Checks
 
 Two checks: one on the web server, one standalone on the balance scan. The helper daemon's own readiness (port 8090) is not displayed.
 
-| Check        | Displayed            | Method                                                  |
-| ------------ | -------------------- | ------------------------------------------------------- |
-| `nginx`      | "Web Interface"      | Port 80 is listening                                    |
-| `watch-scan` | "Watch-Only Wallets" | The helper's scan status, read from `127.0.0.1:8090`    |
+| Check        | Displayed            | Method                                               |
+| ------------ | -------------------- | ---------------------------------------------------- |
+| `nginx`      | "Web Interface"      | Port 80 is listening                                 |
+| `watch-scan` | "Watch-Only Wallets" | The helper's scan status, read from `127.0.0.1:8090` |
 
 **Web Interface** failing means nginx did not start — almost always a rendering error in the config template, which the service logs will show as an nginx `[emerg]` line; a custom price URL that nginx cannot parse as an upstream is the one user-reachable cause.
 
@@ -152,7 +158,7 @@ Two checks: one on the web server, one standalone on the balance scan. The helpe
 
 - `loading` while any wallet still has no balance. With Bitcoin as the source, the first scan of a descriptor imports it into a watch-only wallet on the node with a full rescan from genesis; the message reports the member and the rescan's progress, and the page shows "Fetching…" rather than the partial figure the node would return mid-rescan. That rescan can take an hour or more on an archival node; every later refresh is instant. With public address APIs as the source, the providers rate-limit aggressively — a first scan can take hours, and the helper backs off between retries (2, 5, 15, 30, then 60 minutes) so it never keeps a block in place.
 - `success` once every configured wallet has a balance. Balances are cached for five minutes and refreshed on the page's schedule. It is also what a freshly started helper reports before the page has asked for anything.
-- `failure` when a wallet is set to read from Bitcoin but Bitcoin is not installed (install it, or move the wallet to public APIs), or when the helper does not answer at all. It probes the public providers before it listens, so a few seconds of failure right after start is normal; anything longer means the helper process died, and its stderr is in the service logs.
+- `failure` when a wallet is set to read from Bitcoin but Bitcoin is not installed (install it, or move the wallet to public APIs), when Bitcoin's wallet is disabled (turn on **Enable Wallet** in Bitcoin's **Other Settings**), or when the helper does not answer at all. It probes the public providers before it listens, so a few seconds of failure right after start is normal; anything longer means the helper process died, and its stderr is in the service logs.
 
 ## Backups and Restore
 
@@ -163,8 +169,8 @@ A restored instance has no cached balances and re-scans each watch-only wallet f
 ## Limitations and Differences
 
 1. **No authentication.** Upstream has none and the package adds none. The interface exposes the family's holdings and the Pexels key to anyone who can reach it.
-2. **Bitcoin-backed balances create wallets on the node.** Each watch-only member gets a `watchonly_<name>` descriptor wallet in Bitcoin's wallet directory, imported with a full rescan. Uninstalling the dashboard does not remove them.
-3. **Bitcoin must be archival for local balances.** A pruned node rejects the rescan, and a wallet set to Bitcoin never falls back to public APIs, so it stays on "Fetching…" until it is switched.
+2. **Bitcoin-backed balances create wallets on the node.** Each watch-only member gets a `watchonly_<descriptor hash>` descriptor wallet in Bitcoin's wallet directory, imported with a full rescan. Uninstalling the dashboard does not remove them.
+3. **Bitcoin must be archival with its wallet enabled for local balances.** A pruned node rejects the rescan, and a wallet set to Bitcoin never falls back to public APIs, so it stays on "Fetching…" until it is switched — hence the task on Bitcoin.
 4. **Only `xpub`-encoded keys.** `ypub`/`zpub`/`vpub` keys are rejected by the helper even though upstream's descriptor parser appears to accept them.
 5. **Custom avatars are per browser.** They live in `localStorage`, not in `config.json`, so they are neither shared between devices nor backed up.
 6. **The custom price API cannot carry an API key.** Upstream's `apiKey` field is not wired to anything, so the package does not offer it.
@@ -196,7 +202,8 @@ interfaces:
 actions:
   - manage-family-members
   - configure-dashboard
-tasks: []
+tasks:
+  - { action: autoconfig, severity: critical } # on bitcoind: pruning off, wallet enabled; only while a wallet reads from Bitcoin
 health_checks:
   - nginx # displayed "Web Interface"
   - watch-scan # displayed "Watch-Only Wallets"

@@ -25,13 +25,15 @@ const inputSpec = InputSpec.of({
         spec: InputSpec.of({
           name: Value.text({
             name: i18n('Name'),
-            description: i18n('The display name for this family member'),
+            description: i18n('Shown on the dashboard.'),
             required: true,
             default: null,
           }),
           avgCost: Value.number({
             name: i18n('Average Cost Basis'),
-            description: i18n('Average purchase price per BTC, in USD'),
+            description: i18n(
+              'The average price this member paid per BTC, in USD. The dashboard shows their profit or loss against it.',
+            ),
             required: true,
             default: 0,
             min: 0,
@@ -41,7 +43,7 @@ const inputSpec = InputSpec.of({
           holdings: Value.union({
             name: i18n('Holdings'),
             description: i18n(
-              'Enter the amount by hand, or attach a watch-only wallet and let the dashboard read the on-chain balance.',
+              "Where this member's BTC amount comes from.\n- Entered manually: the amount you type, until you change it\n- Watch-only wallet: the on-chain balance of a wallet you describe by its public output descriptor, kept current by the dashboard",
             ),
             default: 'manual',
             variants: Variants.of({
@@ -50,7 +52,7 @@ const inputSpec = InputSpec.of({
                 spec: InputSpec.of({
                   btcAmount: Value.number({
                     name: i18n('BTC Amount'),
-                    description: i18n('Total bitcoin held by this member'),
+                    description: null,
                     required: true,
                     default: 0,
                     min: 0,
@@ -66,7 +68,7 @@ const inputSpec = InputSpec.of({
                   descriptor: Value.textarea({
                     name: i18n('Output Descriptor'),
                     description: i18n(
-                      "The wallet's output descriptor, e.g. wpkh(xpub...) — also accepts pkh, sh(wpkh), tr, wsh(sortedmulti(...)), or a bare xpub. Only public keys; never paste a private key.",
+                      "The wallet's output descriptor, e.g. wpkh(xpub...) — also accepts pkh, sh(wpkh), tr, wsh(sortedmulti(...)), or a bare xpub. Only public keys; never paste a private key. With Bitcoin on this server as the balance source, a changed descriptor gets a new wallet in Bitcoin, which rescans the chain.",
                     ),
                     required: true,
                     default: null,
@@ -75,7 +77,7 @@ const inputSpec = InputSpec.of({
                   source: Value.select({
                     name: i18n('Balance Source'),
                     description: i18n(
-                      'Bitcoin on this server is instant and private, and never falls back to a public API. Public address APIs are rate-limited, so a first scan can take hours.',
+                      "Where the dashboard looks up this wallet's balance.\n- Bitcoin on this server: your own node, so the wallet's addresses never leave this server. The first lookup rescans the whole chain, which can take an hour or more; later ones are quick. Bitcoin must be running, synced and not pruned, and a public API is never used instead.\n- Public address APIs: mempool.space and other public block explorers, which see the wallet's addresses. They are rate-limited, so a first scan can take hours. Bitcoin on this server is used as a fallback when it is installed.",
                     ),
                     default: 'bitcoind',
                     values: {

@@ -25,10 +25,10 @@ Pasting a wallet's output descriptor lets the dashboard show that member's real 
 
 **Balance Source** decides where the balance comes from:
 
-- **Bitcoin on this server** uses your own node. The first time a wallet is added, Bitcoin scans the whole chain for it, which can take an hour or more; after that the balance is instant and private. Bitcoin must be running and fully synced, and it must not be pruned.
+- **Bitcoin on this server** uses your own node. The first time a wallet is added, Bitcoin scans the whole chain for it, which can take an hour or more; after that the balance is instant and private. Bitcoin must be running and fully synced, unpruned, and with its wallet enabled; StartOS prompts you on Bitcoin's page if either setting needs changing.
 - **Public address APIs** asks mempool.space and other public block explorers. They limit how often you can ask, so a first balance can take a while — possibly hours — and the dashboard shows "Fetching…" until it arrives.
 
-A wallet set to **Bitcoin on this server** never asks a public explorer, so if Bitcoin is stopped or pruned its balance stays on "Fetching…" until you fix that or switch the source. The **Watch-Only Wallets** health check reports what is being scanned until every wallet has a balance.
+A wallet set to **Bitcoin on this server** never asks a public explorer, so if Bitcoin is stopped, pruned or has its wallet off, its balance stays on "Fetching…" until you fix that or switch the source. The **Watch-Only Wallets** health check reports what is being scanned until every wallet has a balance.
 
 ### Custom avatars
 
