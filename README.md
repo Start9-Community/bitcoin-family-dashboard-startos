@@ -139,9 +139,9 @@ One, raised on another service's page.
 
 | Task           | Raised on | Severity   | Raised when                                                                           | Cleared when                                                                                                       |
 | -------------- | --------- | ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Auto-Configure | Bitcoin   | `critical` | A watch-only wallet reads from Bitcoin while Bitcoin is pruned or its wallet disabled | Bitcoin is unpruned with its wallet enabled, or no wallet reads from Bitcoin; it returns if either setting changes |
+| Auto-Configure | Bitcoin   | `critical` | A watch-only wallet reads from Bitcoin while Bitcoin is pruned or its wallet disabled | Bitcoin is unpruned with its wallet enabled; hidden while no wallet reads from Bitcoin |
 
-It carries both settings, so accepting it applies them. Turning pruning off on a node that was pruned means re-downloading the chain.
+It carries both settings, so accepting it applies them. Turning pruning off on a node that was pruned means re-downloading the chain. Disabling the dependency hides the task rather than clearing it; it returns when the dependency is enabled if the settings still need changing.
 
 ## Health Checks
 
@@ -158,7 +158,7 @@ Two checks: one on the web server, one standalone on the balance scan. The helpe
 
 - `loading` while any wallet still has no balance. With Bitcoin as the source, the first scan of a descriptor imports it into a watch-only wallet on the node with a full rescan from genesis; the message reports the member and the rescan's progress, and the page shows "Fetching…" rather than the partial figure the node would return mid-rescan. That rescan can take an hour or more on an archival node; every later refresh is instant. With public address APIs as the source, the providers rate-limit aggressively — a first scan can take hours, and the helper backs off between retries (2, 5, 15, 30, then 60 minutes) so it never keeps a block in place.
 - `success` once every configured wallet has a balance. Balances are cached for five minutes and refreshed on the page's schedule. It is also what a freshly started helper reports before the page has asked for anything.
-- `failure` when a wallet is set to read from Bitcoin but Bitcoin is not installed (install it, or move the wallet to public APIs), or when the helper does not answer at all. It probes the public providers before it listens, so a few seconds of failure right after start is normal; anything longer means the helper process died, and its stderr is in the service logs.
+- `failure` when a wallet is set to read from Bitcoin but Bitcoin is not installed (install it, or move the wallet to public APIs), when Bitcoin's wallet is disabled (turn on **Enable Wallet** in Bitcoin's **Other Settings**), or when the helper does not answer at all. It probes the public providers before it listens, so a few seconds of failure right after start is normal; anything longer means the helper process died, and its stderr is in the service logs.
 
 ## Backups and Restore
 

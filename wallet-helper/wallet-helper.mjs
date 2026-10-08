@@ -355,24 +355,6 @@ async function balanceFromBitcoind(parsed) {
   return Math.round(bal * 1e8)
 }
 
-/** Unload the watch-only wallets this helper loaded for descriptors that are
- *  no longer configured. Skipped unless every configured wallet's name is
- *  known, so a wallet still in use is never unloaded mid-rescan. */
-async function unloadStaleWallets(wallets) {
-  const keep = new Set()
-  for (const w of wallets) {
-    const watch = await watchWalletFor(parseDescriptor(w.descriptor))
-    if (!watch) return
-    keep.add(watch.name)
-  }
-  const loaded = (await bitcoindRpc('listwallets'))?.result ?? []
-  for (const name of loaded) {
-    if (name.startsWith('watchonly_') && !keep.has(name)) {
-      await bitcoindRpc('unloadwallet', [name])
-    }
-  }
-}
-
 const GAP_LIMIT = 20 // stop scanning after this many unused addresses past the last used one
 const MAX_RANGE = 200 // hard cap per branch (keep scans light for rate-limited public APIs)
 const SCAN_CONCURRENCY = 5 // public APIs rate-limit; keep modest
@@ -791,12 +773,6 @@ async function runBalanceScan() {
         ),
       ])
       results.push(result)
-    }
-
-    const usesBitcoind =
-      wallets.some((w) => (w.source ?? 'bitcoind') === 'bitcoind') || results.some((r) => r.source === 'bitcoind')
-    if (BITCOIND_RPC && usesBitcoind && !results.some((r) => r.walletDisabled)) {
-      await unloadStaleWallets(wallets).catch((e) => console.error(`unloadStaleWallets: ${e.message}`))
     }
 
     const pending =
