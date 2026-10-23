@@ -1,18 +1,16 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.2.2:3',
+  version: '0.2.2:4',
   releaseNotes: {
-    en_US:
-      'Restarting Bitcoin Family Dashboard while it is still starting stops every process of the previous run.',
-    es_ES:
-      'Reiniciar Bitcoin Family Dashboard mientras aún se está iniciando detiene todos los procesos de la ejecución anterior.',
+    en_US: 'Updates nginx to 1.31.7 and Node.js with security fixes.',
+    es_ES: 'Actualiza nginx a 1.31.7 y Node.js con correcciones de seguridad.',
     de_DE:
-      'Ein Neustart von Bitcoin Family Dashboard, während es noch startet, beendet alle Prozesse des vorherigen Laufs.',
+      'Aktualisiert nginx auf 1.31.7 und Node.js mit Sicherheitskorrekturen.',
     pl_PL:
-      'Ponowne uruchomienie Bitcoin Family Dashboard w trakcie uruchamiania zatrzymuje wszystkie procesy poprzedniego uruchomienia.',
+      'Aktualizuje nginx do wersji 1.31.7 oraz Node.js z poprawkami bezpieczeństwa.',
     fr_FR:
-      "Redémarrer Bitcoin Family Dashboard pendant son démarrage arrête tous les processus de l'exécution précédente.",
+      'Met à jour nginx vers 1.31.7 et Node.js avec des correctifs de sécurité.',
   },
   migrations: {
     up: async ({ effects }) => {},

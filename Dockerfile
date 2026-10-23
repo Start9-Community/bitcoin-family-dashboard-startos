@@ -4,7 +4,7 @@ COPY wallet-helper/package.json wallet-helper/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY wallet-helper/wallet-helper.mjs ./
 
-FROM nginx:1.31.6-alpine
+FROM nginx:1.31.7-alpine
 RUN apk add --no-cache nodejs
 COPY --from=helper /opt/wallet-helper /opt/wallet-helper
 COPY nginx-templates/ /etc/nginx/templates/
