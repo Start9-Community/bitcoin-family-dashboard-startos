@@ -23,6 +23,9 @@ server {
     location = /api/cbstats {
         proxy_pass https://api.exchange.coinbase.com/products/BTC-USD/stats;
         proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
         proxy_ssl_protocols TLSv1.2 TLSv1.3;
         proxy_read_timeout 15s;
         proxy_set_header Host api.exchange.coinbase.com;
@@ -31,6 +34,9 @@ server {
     location /api/bn/ {
         proxy_pass https://data-api.binance.vision/api/v3/;
         proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
         proxy_ssl_protocols TLSv1.2 TLSv1.3;
         proxy_read_timeout 15s;
         proxy_set_header Host data-api.binance.vision;
@@ -39,6 +45,9 @@ server {
     location /api/bc/ {
         proxy_pass https://api.blockchain.info/charts/;
         proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
         proxy_ssl_protocols TLSv1.2 TLSv1.3;
         proxy_read_timeout 15s;
         proxy_set_header Host api.blockchain.info;
@@ -49,6 +58,9 @@ server {
     location /api/pexels/ {
         proxy_pass https://api.pexels.com/v1/;
         proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
         proxy_ssl_protocols TLSv1.2 TLSv1.3;
         proxy_read_timeout 15s;
         proxy_set_header Host api.pexels.com;
@@ -64,6 +76,9 @@ server {
     location /api/price {
         proxy_pass ${PRICE_UPSTREAM};
         proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
         proxy_ssl_protocols TLSv1.2 TLSv1.3;
         proxy_read_timeout 15s;
         proxy_set_header Host ${PRICE_HOST};
