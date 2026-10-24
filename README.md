@@ -35,7 +35,7 @@
 
 ## Image and Container Runtime
 
-One image, built by this repo's `Dockerfile` from the `bitcoin-family-dashboard/` git submodule, which is pinned at an upstream commit — upstream ships no image and no releases.
+One image, built by this repo's `Dockerfile` from the `bitcoin-family-dashboard/` git submodule, which is pinned at an upstream commit — upstream ships no image and no releases. The `Dockerfile` also upgrades the `nginx:1.31.8-alpine` base's CA store and `brotli-libs`, a temporary layer that comes out once that base tag is rebuilt with fixed packages.
 
 | Property      | Value                                                 |
 | ------------- | ----------------------------------------------------- |
@@ -131,14 +131,14 @@ The form holds at most six members, and names must be unique because the watch-o
 - **What happens next:** the page picks up the new title and background setting on its next refresh; the new price source is live once the service is back.
 - **Outputs:** none.
 
-A custom price API must be an `http://` or `https://` URL returning JSON in either the `{"price", "change24h"}` or the CoinGecko `{"bitcoin": {"usd", "usd_24h_change"}}` shape. nginx proxies it verbatim with the `Host` header set to the URL's host; there is no way to attach an API key to it. Enabling backgrounds without a Pexels key is rejected.
+A custom price API must be an `http://` or `https://` URL returning JSON in either the `{"price", "change24h"}` or the CoinGecko `{"bitcoin": {"usd", "usd_24h_change"}}` shape. nginx proxies it verbatim with the `Host` header set to the URL's host, and an `https://` endpoint must present a certificate from a publicly trusted CA that matches that host — a self-signed or private-CA endpoint fails every price request with a 502; there is no way to attach an API key to it. Enabling backgrounds without a Pexels key is rejected.
 
 ## Tasks
 
 One, raised on another service's page.
 
-| Task           | Raised on | Severity   | Raised when                                                                           | Cleared when                                                                                                       |
-| -------------- | --------- | ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Task           | Raised on | Severity   | Raised when                                                                           | Cleared when                                                                           |
+| -------------- | --------- | ---------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Auto-Configure | Bitcoin   | `critical` | A watch-only wallet reads from Bitcoin while Bitcoin is pruned or its wallet disabled | Bitcoin is unpruned with its wallet enabled; hidden while no wallet reads from Bitcoin |
 
 It carries both settings, so accepting it applies them. Turning pruning off on a node that was pruned means re-downloading the chain. Disabling the dependency hides the task rather than clearing it; it returns when the dependency is enabled if the settings still need changing.
