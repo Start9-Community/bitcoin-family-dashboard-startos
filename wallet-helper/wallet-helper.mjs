@@ -8,7 +8,7 @@
  * bitcoind package is installed) or from public address APIs with
  * multi-provider fallback.
  */
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import http from 'node:http'
 import { createRequire } from 'node:module'
@@ -693,9 +693,16 @@ async function saveAvatar(name, body) {
   }
   await fs.promises.mkdir(AVATAR_DIR, { recursive: true })
   const target = avatarPath(name)
-  const tmp = `${target}.${process.pid}.tmp`
-  await fs.promises.writeFile(tmp, body)
-  await fs.promises.rename(tmp, target) // atomic — never a half-written picture
+  // One unique temporary file per upload (exclusive create) so two devices
+  // uploading the same member can never collide — rename still publishes
+  // the picture atomically.
+  const tmp = `${target}.${randomUUID()}.tmp`
+  try {
+    await fs.promises.writeFile(tmp, body, { flag: 'wx' })
+    await fs.promises.rename(tmp, target) // atomic — never a half-written picture
+  } finally {
+    await fs.promises.rm(tmp, { force: true })
+  }
   const st = await fs.promises.stat(target)
   return { url: `/avatars/${avatarSlug(name)}.jpg`, v: Math.floor(st.mtimeMs) }
 }
