@@ -8,9 +8,11 @@
  * bitcoind package is installed) or from public address APIs with
  * multi-provider fallback.
  */
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import fs from 'node:fs'
 import http from 'node:http'
 import { createRequire } from 'node:module'
+import path from 'node:path'
 import { BIP32Factory } from 'bip32'
 import * as bitcoin from 'bitcoinjs-lib'
 
@@ -20,6 +22,10 @@ const ecc = require('tiny-secp256k1')
 const bip32 = BIP32Factory(ecc)
 
 const PORT = Number(process.env.HELPER_PORT || 8090)
+// Package volume. Overridable so the helper can be exercised outside StartOS.
+const DATA_DIR = process.env.DATA_DIR || '/data'
+const AVATAR_DIR = path.join(DATA_DIR, 'avatars')
+const AVATAR_MAX_BYTES = 256 * 1024
 const BITCOIND_RPC = process.env.BITCOIND_RPC || '' // e.g. http://10.0.3.1:8332
 const MEMPOOL_API = process.env.MEMPOOL_API || 'https://mempool.space/api'
 const NETWORK = process.env.BITCOIN_NETWORK === 'testnet' ? bitcoin.networks.testnet : bitcoin.networks.bitcoin
@@ -598,6 +604,110 @@ let needsBalance = false
 const CACHE_TTL_MS = 5 * 60 * 1000
 const balanceCache = new Map() // memberName -> { balanceSats, source, at }
 
+// ── Uploaded profile pictures ──────────────────────────────────────
+// Stored on the package volume (/data/avatars) rather than in the browser, so
+// a picture survives reboots, browser site-data wipes and the dashboard's
+// dynamic LAN port changing, and is shared by every device that opens the
+// page. The page keeps a localStorage mirror purely as an instant cache.
+
+/** Stable, filesystem-safe file stem for a member name — never the raw name,
+ *  so nothing the browser sends can escape the avatar directory. */
+function avatarSlug(name) {
+  return 'a-' + createHash('sha256').update(String(name)).digest('hex').slice(0, 16)
+}
+
+function familyMemberNames() {
+  try {
+    const config = JSON.parse(
+      fs.readFileSync(path.join(DATA_DIR, 'config.json'), 'utf8'),
+    )
+    return (config.familyMembers || [])
+      .map((m) => m && m.name)
+      .filter((n) => typeof n === 'string' && n.length > 0)
+  } catch (e) {
+    return []
+  }
+}
+
+function avatarPath(name) {
+  return path.join(AVATAR_DIR, `${avatarSlug(name)}.jpg`)
+}
+
+async function listAvatars() {
+  const out = {}
+  for (const name of familyMemberNames()) {
+    try {
+      const st = await fs.promises.stat(avatarPath(name))
+      out[name] = {
+        url: `/avatars/${avatarSlug(name)}.jpg`,
+        v: Math.floor(st.mtimeMs),
+      }
+    } catch (e) {
+      // no picture stored for this member
+    }
+  }
+  return out
+}
+
+function readBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let size = 0
+    let tooLarge = false
+    req.on('data', (chunk) => {
+      // Once over the limit stop buffering but keep consuming: answering a
+      // request whose body is still arriving makes Node reset the socket, so
+      // the client would see a hang-up instead of the 413.
+      if (tooLarge) return
+      size += chunk.length
+      if (size > limit) {
+        tooLarge = true
+        chunks.length = 0
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.on('end', () => {
+      if (tooLarge) {
+        reject(Object.assign(new Error('picture too large'), { status: 413 }))
+      } else {
+        resolve(Buffer.concat(chunks))
+      }
+    })
+    req.on('error', reject)
+  })
+}
+
+async function saveAvatar(name, body) {
+  if (!familyMemberNames().includes(name)) {
+    throw Object.assign(new Error('unknown family member'), { status: 400 })
+  }
+  // JPEG only (the page always re-encodes to JPEG before uploading).
+  if (
+    body.length < 4 ||
+    body[0] !== 0xff ||
+    body[1] !== 0xd8 ||
+    body[2] !== 0xff
+  ) {
+    throw Object.assign(new Error('not a JPEG image'), { status: 415 })
+  }
+  await fs.promises.mkdir(AVATAR_DIR, { recursive: true })
+  const target = avatarPath(name)
+  // One unique temporary file per upload (exclusive create) so two devices
+  // uploading the same member can never collide — rename still publishes
+  // the picture atomically.
+  const tmp = `${target}.${randomUUID()}.tmp`
+  try {
+    await fs.promises.writeFile(tmp, body, { flag: 'wx' })
+    await fs.promises.rename(tmp, target) // atomic — never a half-written picture
+  } finally {
+    await fs.promises.rm(tmp, { force: true })
+  }
+  const st = await fs.promises.stat(target)
+  return { url: `/avatars/${avatarSlug(name)}.jpg`, v: Math.floor(st.mtimeMs) }
+}
+
+
 async function handle(req, res) {
   res.setHeader('Content-Type', 'application/json')
   res.setHeader('Cache-Control', 'no-store')
@@ -605,6 +715,35 @@ async function handle(req, res) {
 
   try {
     const url = new URL(req.url, `http://localhost:${PORT}`)
+
+    // Uploaded profile pictures. The page reads /api/avatars and writes
+    // /api/avatar; nginx serves the files themselves from /avatars/.
+    if (url.pathname === '/api/avatars') {
+      res.writeHead(200)
+      res.end(JSON.stringify(await listAvatars()))
+      return
+    }
+
+    if (url.pathname === '/api/avatar') {
+      if (req.method !== 'PUT' && req.method !== 'POST') {
+        res.writeHead(405)
+        res.end(JSON.stringify({ error: 'method not allowed' }))
+        return
+      }
+      try {
+        const name = url.searchParams.get('name') || ''
+        const body = await readBody(req, AVATAR_MAX_BYTES)
+        const saved = await saveAvatar(name, body)
+        console.log(`avatar stored for "${name}" (${body.length} bytes)`)
+        res.writeHead(200)
+        res.end(JSON.stringify(saved))
+      } catch (e) {
+        if (e.status === 413) res.setHeader('Connection', 'close')
+        res.writeHead(e.status || 500)
+        res.end(JSON.stringify({ error: e.message }))
+      }
+      return
+    }
 
     // Scan status endpoint (used by the StartOS health check)
     if (url.pathname === '/api/scan-status') {
@@ -643,8 +782,7 @@ async function handle(req, res) {
 async function runBalanceScan() {
   try {
     // Config is read from the volume at /data/config.json
-    const fs = await import('node:fs')
-    const raw = fs.readFileSync('/data/config.json', 'utf8')
+    const raw = fs.readFileSync(path.join(DATA_DIR, 'config.json'), 'utf8')
     const config = JSON.parse(raw)
     const wallets = config.watchOnlyWallets || []
 

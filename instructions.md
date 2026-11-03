@@ -32,7 +32,7 @@ A wallet set to **Bitcoin on this server** never asks a public explorer, so if B
 
 ### Custom avatars
 
-Hover over a member's avatar on the dashboard and click it to upload a picture. Avatars are stored in your browser, so each device keeps its own.
+Hover over a member's avatar on the dashboard and click it to upload a picture. Pictures are stored on the service itself, so they survive reboots and appear on every device that opens the dashboard.
 
 ### Actions
 

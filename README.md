@@ -9,7 +9,7 @@
 > here, the upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[Bitcoin Family Dashboard](https://github.com/wahidsaleemi/bitcoin-family-dashboard) is a single static page that shows each family member's bitcoin holdings, their value at the live price, profit and loss against an average cost basis, and 30-day, 1-year and 10-year price charts. Upstream it is a folder of HTML you serve yourself and configure by editing a JSON file; this package serves it with nginx, owns that JSON file through StartOS actions, proxies every outbound API call so the browser never hits CORS, and adds a small Node helper that resolves watch-only wallet balances — from Bitcoin on the same server when it is installed, otherwise from public address APIs.
+[Bitcoin Family Dashboard](https://github.com/wahidsaleemi/bitcoin-family-dashboard) is a single static page that shows each family member's bitcoin holdings, their value at the live price, profit and loss against an average cost basis, and 30-day, 1-year and 10-year price charts. Upstream it is a folder of HTML you serve yourself and configure by editing a JSON file; this package serves it with nginx, owns that JSON file through StartOS actions, proxies every outbound API call so the browser never hits CORS, and adds a small Node helper that resolves watch-only wallet balances — from Bitcoin on the same server when it is installed, otherwise from public address APIs — and stores and serves the uploaded profile pictures.
 
 - **Upstream repo:** <https://github.com/wahidsaleemi/bitcoin-family-dashboard>
 - **Wrapper repo:** <https://github.com/Start9-Community/bitcoin-family-dashboard-startos>
@@ -55,11 +55,11 @@ The image copies the dashboard's static files into nginx's web root and the wall
 
 ## Volume and Data Layout
 
-One volume, holding one file.
+One volume, holding the configuration file and the uploaded avatar store.
 
-| Volume | Mount Point | Purpose                                    |
-| ------ | ----------- | ------------------------------------------ |
-| `main` | `/data`     | `config.json`, the dashboard's whole state |
+| Volume | Mount Point | Purpose                                                              |
+| ------ | ----------- | -------------------------------------------------------------------- |
+| `main` | `/data`     | `config.json` and `/data/avatars/`, the dashboard's whole state |
 
 When Bitcoin is installed, its `main` volume is additionally mounted read-only at `/mnt/bitcoind` so the helper can read the RPC cookie. The mount is only declared while Bitcoin is present; the service restarts once when Bitcoin is installed or removed.
 
@@ -164,7 +164,7 @@ Two checks: one on the web server, one standalone on the balance scan. The helpe
 
 The `main` volume is copied wholesale — `sdk.Backups.ofVolumes('main')` — so a backup is the one `config.json` and a restore brings back every member, wallet descriptor and setting exactly. Nothing is excluded.
 
-A restored instance has no cached balances and re-scans each watch-only wallet from scratch, with the same first-scan cost as a fresh install. Custom member avatars are not in the backup at all: the page stores them in the browser's `localStorage`, per device.
+A restored instance has no cached balances and re-scans each watch-only wallet from scratch, with the same first-scan cost as a fresh install. Custom member avatars are stored on the volume at `/data/avatars/` and ARE included in the backup; a browser that had an older build pushes its local picture up once on load, so nothing uploaded through the page is lost.
 
 ## Limitations and Differences
 
@@ -172,7 +172,7 @@ A restored instance has no cached balances and re-scans each watch-only wallet f
 2. **Bitcoin-backed balances create wallets on the node.** Each watch-only member gets a `watchonly_<descriptor hash>` descriptor wallet in Bitcoin's wallet directory, imported with a full rescan. Uninstalling the dashboard does not remove them.
 3. **Bitcoin must be archival with its wallet enabled for local balances.** A pruned node rejects the rescan, and a wallet set to Bitcoin never falls back to public APIs, so it stays on "Fetching…" until it is switched — hence the task on Bitcoin.
 4. **Only `xpub`-encoded keys.** `ypub`/`zpub`/`vpub` keys are rejected by the helper even though upstream's descriptor parser appears to accept them.
-5. **Custom avatars are per browser.** They live in `localStorage`, not in `config.json`, so they are neither shared between devices nor backed up.
+5. **Custom avatars live on the package volume and are backed up.** Uploaded pictures are stored at `/data/avatars/` (JPEG, 150×150, max 256 KB each) and shared by every device that opens the dashboard.
 6. **The custom price API cannot carry an API key.** Upstream's `apiKey` field is not wired to anything, so the package does not offer it.
 
 ---
@@ -188,7 +188,7 @@ architectures:
 subcontainers:
   - dashboard # nginx + wallet-helper
 volumes:
-  main: /data
+  main: /data # config.json + /data/avatars/
 file_models:
   - /data/config.json
 startos_managed_env_vars:
