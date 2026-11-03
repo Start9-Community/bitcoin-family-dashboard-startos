@@ -9,7 +9,7 @@
 > here, the upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[Bitcoin Family Dashboard](https://github.com/wahidsaleemi/bitcoin-family-dashboard) is a single static page that shows each family member's bitcoin holdings, their value at the live price, profit and loss against an average cost basis, and 30-day, 1-year and 10-year price charts. Upstream it is a folder of HTML you serve yourself and configure by editing a JSON file; this package serves it with nginx, owns that JSON file through StartOS actions, proxies every outbound API call so the browser never hits CORS, and adds a small Node helper that resolves watch-only wallet balances — from Bitcoin on the same server when it is installed, otherwise from public address APIs.
+[Bitcoin Family Dashboard](https://github.com/wahidsaleemi/bitcoin-family-dashboard) is a single static page that shows each family member's bitcoin holdings, their value at the live price, profit and loss against an average cost basis, and 30-day, 1-year and 10-year price charts. Upstream it is a folder of HTML you serve yourself and configure by editing a JSON file; this package serves it with nginx, owns that JSON file through StartOS actions, proxies every outbound API call so the browser never hits CORS, and adds a small Node helper that resolves watch-only wallet balances — from Bitcoin on the same server when it is installed, otherwise from public address APIs — and stores and serves the uploaded profile pictures.
 
 - **Upstream repo:** <https://github.com/wahidsaleemi/bitcoin-family-dashboard>
 - **Wrapper repo:** <https://github.com/Start9-Community/bitcoin-family-dashboard-startos>
@@ -55,11 +55,11 @@ The image copies the dashboard's static files into nginx's web root and the wall
 
 ## Volume and Data Layout
 
-One volume, holding one file.
+One volume, holding the configuration file and the uploaded avatar store.
 
-| Volume | Mount Point | Purpose                                    |
-| ------ | ----------- | ------------------------------------------ |
-| `main` | `/data`     | `config.json`, the dashboard's whole state |
+| Volume | Mount Point | Purpose                                                              |
+| ------ | ----------- | -------------------------------------------------------------------- |
+| `main` | `/data`     | `config.json` and `/data/avatars/`, the dashboard's whole state |
 
 When Bitcoin is installed, its `main` volume is additionally mounted read-only at `/mnt/bitcoind` so the helper can read the RPC cookie. The mount is only declared while Bitcoin is present; the service restarts once when Bitcoin is installed or removed.
 
@@ -188,7 +188,7 @@ architectures:
 subcontainers:
   - dashboard # nginx + wallet-helper
 volumes:
-  main: /data
+  main: /data # config.json + /data/avatars/
 file_models:
   - /data/config.json
 startos_managed_env_vars:
