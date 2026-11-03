@@ -164,7 +164,7 @@ Two checks: one on the web server, one standalone on the balance scan. The helpe
 
 The `main` volume is copied wholesale — `sdk.Backups.ofVolumes('main')` — so a backup is the one `config.json` and a restore brings back every member, wallet descriptor and setting exactly. Nothing is excluded.
 
-A restored instance has no cached balances and re-scans each watch-only wallet from scratch, with the same first-scan cost as a fresh install. Custom member avatars are not in the backup at all: the page stores them in the browser's `localStorage`, per device.
+A restored instance has no cached balances and re-scans each watch-only wallet from scratch, with the same first-scan cost as a fresh install. Custom member avatars are stored on the volume at `/data/avatars/` and ARE included in the backup; a browser that had an older build pushes its local picture up once on load, so nothing uploaded through the page is lost.
 
 ## Limitations and Differences
 
@@ -172,7 +172,7 @@ A restored instance has no cached balances and re-scans each watch-only wallet f
 2. **Bitcoin-backed balances create wallets on the node.** Each watch-only member gets a `watchonly_<descriptor hash>` descriptor wallet in Bitcoin's wallet directory, imported with a full rescan. Uninstalling the dashboard does not remove them.
 3. **Bitcoin must be archival with its wallet enabled for local balances.** A pruned node rejects the rescan, and a wallet set to Bitcoin never falls back to public APIs, so it stays on "Fetching…" until it is switched — hence the task on Bitcoin.
 4. **Only `xpub`-encoded keys.** `ypub`/`zpub`/`vpub` keys are rejected by the helper even though upstream's descriptor parser appears to accept them.
-5. **Custom avatars are per browser.** They live in `localStorage`, not in `config.json`, so they are neither shared between devices nor backed up.
+5. **Custom avatars live on the package volume and are backed up.** Uploaded pictures are stored at `/data/avatars/` (JPEG, 150×150, max 256 KB each) and shared by every device that opens the dashboard.
 6. **The custom price API cannot carry an API key.** Upstream's `apiKey` field is not wired to anything, so the package does not offer it.
 
 ---
