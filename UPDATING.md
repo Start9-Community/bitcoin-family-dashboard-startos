@@ -29,8 +29,6 @@ The image base is `nginx:<version>-alpine` in the `Dockerfile`; bump it when Doc
    git add bitcoin-family-dashboard
    ```
 
-2. Set `version` in `startos/versions/current.ts` to `<upstream>:0`. If only the packaging
-   changed, leave the submodule alone and increment the revision instead (`0.2.2:0` → `0.2.2:1`).
-3. Rewrite `releaseNotes` in that file for all five locales.
-4. If a `config.json` key was added or changed upstream, update `startos/fileModels/config.json.ts`
+2. Set `version` in `startos/versions/current.ts` to `<upstream>:0`.
+3. If a `config.json` key was added or changed upstream, update `startos/fileModels/config.json.ts`
    and the action that owns the key.
