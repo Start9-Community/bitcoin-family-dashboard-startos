@@ -61,7 +61,7 @@ One volume, holding the configuration file and the uploaded avatar store.
 | ------ | ----------- | -------------------------------------------------------------------- |
 | `main` | `/data`     | `config.json` and `/data/avatars/`, the dashboard's whole state |
 
-When Bitcoin is installed, its `main` volume is additionally mounted read-only at `/mnt/bitcoind` so the helper can read the RPC cookie. The mount is only declared while Bitcoin is present; the service restarts once when Bitcoin is installed or removed.
+When the installed Bitcoin publishes its `public` volume, that volume is additionally mounted read-only at `/mnt/bitcoind`; the helper reads `.cookie` from it, without access to Bitcoin's chain or wallet data. An older Bitcoin without this export does not prevent the dashboard from starting: local wallet balances report that Bitcoin needs updating, while other features remain available. The export is watched reactively, so updating Bitcoin enables the mount without a manual dashboard restart.
 
 There is no `store.json`: every setting is upstream configuration the page itself reads, so it all lives in `config.json`.
 
@@ -85,9 +85,9 @@ While a Pexels background is displayed, the page shows a small attribution pill 
 
 One optional dependency.
 
-| Dependency | Required | Health checks               | Mount                                | Why                                                                         |
-| ---------- | -------- | --------------------------- | ------------------------------------ | --------------------------------------------------------------------------- |
-| Bitcoin    | No       | `bitcoind`, `sync-progress` | `main` at `/mnt/bitcoind`, read-only | Resolves watch-only balances locally instead of through public address APIs |
+| Dependency | Required | Health checks               | Mount                                  | Why                                                                         |
+| ---------- | -------- | --------------------------- | -------------------------------------- | --------------------------------------------------------------------------- |
+| Bitcoin    | No       | `bitcoind`, `sync-progress` | `public` at `/mnt/bitcoind`, read-only | Resolves watch-only balances locally instead of through public address APIs |
 
 The dependency is declared as current only while a watch-only wallet is configured with **Bitcoin on this server** as its balance source; a dashboard without watch-only wallets, or one using public APIs, shows no dependency warning at all. The helper authenticates with Bitcoin's RPC cookie over the host bridge, so no RPC user is created.
 
@@ -195,6 +195,7 @@ startos_managed_env_vars:
   - PRICE_UPSTREAM # nginx: the price API to proxy
   - PRICE_HOST # nginx: its Host header
   - BITCOIND_RPC # wallet-helper: Bitcoin's RPC bridge address, absent when Bitcoin is not installed
+  - BITCOIND_COOKIE # wallet-helper: Bitcoin's RPC cookie in its public volume, absent when Bitcoin is not installed
 dependencies:
   - bitcoind # optional; current only while a wallet uses it
 interfaces:

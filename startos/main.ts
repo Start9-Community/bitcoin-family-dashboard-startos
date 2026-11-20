@@ -1,4 +1,9 @@
-import { rpcHostId, rpcPort } from 'bitcoin-core-startos/startos/utils'
+import {
+  rpcCookieName,
+  rpcHostId,
+  rpcPort,
+  rpcVolumeId,
+} from 'bitcoin-core-startos/startos/utils'
 import { configJson } from './fileModels/config.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
@@ -16,7 +21,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ? priceSource.apiUrl
       : priceUpstreams[priceSource?.type ?? 'coinbase']
 
-  const bitcoindRpc = await sdk.host
+  // Missing optional Bitcoin exports must not prevent the dashboard from starting.
+  const hasRpcVolume = await sdk
+    .getServiceManifest(
+      effects,
+      'bitcoind',
+      (manifest) => manifest?.volumes.includes(rpcVolumeId) ?? false,
+    )
+    .const()
+  const bitcoindAddress = await sdk.host
     .getBridgeAddress(effects, {
       packageId: 'bitcoind',
       hostId: rpcHostId,
@@ -24,6 +37,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ssl: false,
     })
     .const()
+  const bitcoindRpc = hasRpcVolume ? bitcoindAddress : null
 
   let mounts = sdk.Mounts.of().mountVolume({
     volumeId: 'main',
@@ -34,7 +48,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (bitcoindRpc) {
     mounts = mounts.mountDependency({
       dependencyId: 'bitcoind',
-      volumeId: 'main',
+      volumeId: rpcVolumeId,
       subpath: null,
       mountpoint: '/mnt/bitcoind',
       readonly: true,
@@ -72,7 +86,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
       subcontainer: dashboard,
       exec: {
         command: ['node', '/opt/wallet-helper/wallet-helper.mjs'],
-        env: bitcoindRpc ? { BITCOIND_RPC: `http://${bitcoindRpc}` } : {},
+        env: bitcoindRpc
+          ? {
+              BITCOIND_RPC: `http://${bitcoindRpc}`,
+              BITCOIND_COOKIE: `/mnt/bitcoind/${rpcCookieName}`,
+            }
+          : {},
       },
       ready: {
         display: null,
@@ -101,9 +120,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
           ) {
             return {
               result: 'failure',
-              message: i18n(
-                'A watch-only wallet reads its balance from Bitcoin, but Bitcoin is not installed',
-              ),
+              message: bitcoindAddress
+                ? i18n(
+                    'Update Bitcoin to enable local watch-only wallet balances. The dashboard needs its published RPC credentials.',
+                  )
+                : i18n(
+                    'A watch-only wallet reads its balance from Bitcoin, but Bitcoin is not installed',
+                  ),
             }
           }
 

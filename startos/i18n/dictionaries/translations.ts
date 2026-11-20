@@ -61,6 +61,7 @@ export default {
     57: 'Bitcoin no está instalado en este servidor. Instálalo primero o elige API públicas de direcciones como fuente del saldo.',
     58: 'El monedero de Bitcoin está desactivado. Activa «Habilitar billetera» en «Otras configuraciones» de Bitcoin.',
     59: 'El panel lee los saldos desde el monedero de Bitcoin, que necesita un nodo sin podar con el monedero activado',
+    60: 'Actualiza Bitcoin para habilitar los saldos de monederos locales de solo lectura. El panel necesita las credenciales RPC que publica Bitcoin.',
   },
   de_DE: {
     0: 'Starte Bitcoin Family Dashboard!',
@@ -122,6 +123,7 @@ export default {
     57: 'Bitcoin ist auf diesem Server nicht installiert. Installiere es zuerst oder wähle Öffentliche Adress-APIs als Quelle des Saldos.',
     58: 'Das Wallet von Bitcoin ist deaktiviert. Aktiviere „Wallet aktivieren“ unter „Weitere Einstellungen“ von Bitcoin.',
     59: 'Das Dashboard liest Salden aus dem Wallet von Bitcoin, das einen nicht beschnittenen Node mit aktiviertem Wallet braucht',
+    60: 'Aktualisiere Bitcoin, um die Salden lokaler Watch-only-Wallets abzurufen. Das Dashboard benötigt die von Bitcoin veröffentlichten RPC-Zugangsdaten.',
   },
   pl_PL: {
     0: 'Uruchamianie Bitcoin Family Dashboard!',
@@ -183,6 +185,7 @@ export default {
     57: 'Bitcoin nie jest zainstalowany na tym serwerze. Najpierw go zainstaluj albo wybierz Publiczne API adresów jako źródło salda.',
     58: 'Portfel Bitcoina jest wyłączony. Włącz „Włącz portfel” w „Inne ustawienia” Bitcoina.',
     59: 'Panel odczytuje salda z portfela Bitcoina, który wymaga nieprzyciętego węzła z włączonym portfelem',
+    60: 'Zaktualizuj Bitcoina, aby włączyć salda lokalnych portfeli tylko do odczytu. Panel potrzebuje udostępnionych przez Bitcoina danych uwierzytelniających RPC.',
   },
   fr_FR: {
     0: 'Démarrage de Bitcoin Family Dashboard !',
@@ -244,5 +247,6 @@ export default {
     57: "Bitcoin n'est pas installé sur ce serveur. Installez-le d'abord, ou choisissez API d'adresses publiques comme source du solde.",
     58: 'Le portefeuille de Bitcoin est désactivé. Activez « Activer le portefeuille » dans les « Autres paramètres » de Bitcoin.',
     59: 'Le tableau de bord lit les soldes depuis le portefeuille de Bitcoin, ce qui nécessite un nœud non élagué avec le portefeuille activé',
+    60: 'Mettez Bitcoin à jour pour activer les soldes des portefeuilles locaux en lecture seule. Le tableau de bord a besoin des identifiants RPC publiés par Bitcoin.',
   },
 } satisfies Record<string, LangDict>
