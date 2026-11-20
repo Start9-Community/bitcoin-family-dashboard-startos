@@ -21,7 +21,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ? priceSource.apiUrl
       : priceUpstreams[priceSource?.type ?? 'coinbase']
 
-  const bitcoindRpc = await sdk.host
+  // Missing optional Bitcoin exports must not prevent the dashboard from starting.
+  const hasRpcVolume = await sdk
+    .getServiceManifest(
+      effects,
+      'bitcoind',
+      (manifest) => manifest?.volumes.includes(rpcVolumeId) ?? false,
+    )
+    .const()
+  const bitcoindAddress = await sdk.host
     .getBridgeAddress(effects, {
       packageId: 'bitcoind',
       hostId: rpcHostId,
@@ -29,6 +37,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ssl: false,
     })
     .const()
+  const bitcoindRpc = hasRpcVolume ? bitcoindAddress : null
 
   let mounts = sdk.Mounts.of().mountVolume({
     volumeId: 'main',
@@ -111,9 +120,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
           ) {
             return {
               result: 'failure',
-              message: i18n(
-                'A watch-only wallet reads its balance from Bitcoin, but Bitcoin is not installed',
-              ),
+              message: bitcoindAddress
+                ? i18n(
+                    'Update Bitcoin to enable local watch-only wallet balances. The dashboard needs its published RPC credentials.',
+                  )
+                : i18n(
+                    'A watch-only wallet reads its balance from Bitcoin, but Bitcoin is not installed',
+                  ),
             }
           }
 

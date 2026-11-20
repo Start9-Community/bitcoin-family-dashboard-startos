@@ -67,6 +67,7 @@ const dict = {
   'Bitcoin is not installed on this server. Install it first, or choose Public address APIs as the balance source.': 57,
   "Bitcoin's wallet is disabled. Turn on Enable Wallet in Bitcoin's Other Settings.": 58,
   "The dashboard reads balances from Bitcoin's wallet, which needs an unpruned node with its wallet enabled": 59,
+  'Update Bitcoin to enable local watch-only wallet balances. The dashboard needs its published RPC credentials.': 60,
 } as const
 
 /**

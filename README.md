@@ -61,7 +61,7 @@ One volume, holding the configuration file and the uploaded avatar store.
 | ------ | ----------- | -------------------------------------------------------------------- |
 | `main` | `/data`     | `config.json` and `/data/avatars/`, the dashboard's whole state |
 
-When Bitcoin is installed, its `public` volume, which holds the RPC cookie Bitcoin publishes for dependents and none of its chain or wallet data, is additionally mounted read-only at `/mnt/bitcoind`; the helper reads `.cookie` from it. The mount is only declared while Bitcoin is present; the service restarts once when Bitcoin is installed or removed.
+When the installed Bitcoin publishes its `public` volume, that volume is additionally mounted read-only at `/mnt/bitcoind`; the helper reads `.cookie` from it, without access to Bitcoin's chain or wallet data. An older Bitcoin without this export does not prevent the dashboard from starting: local wallet balances report that Bitcoin needs updating, while other features remain available. The export is watched reactively, so updating Bitcoin enables the mount without a manual dashboard restart.
 
 There is no `store.json`: every setting is upstream configuration the page itself reads, so it all lives in `config.json`.
 
