@@ -1,4 +1,9 @@
-import { rpcHostId, rpcPort } from 'bitcoin-core-startos/startos/utils'
+import {
+  rpcCookieName,
+  rpcHostId,
+  rpcPort,
+  rpcVolumeId,
+} from 'bitcoin-core-startos/startos/utils'
 import { configJson } from './fileModels/config.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
@@ -34,7 +39,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (bitcoindRpc) {
     mounts = mounts.mountDependency({
       dependencyId: 'bitcoind',
-      volumeId: 'main',
+      volumeId: rpcVolumeId,
       subpath: null,
       mountpoint: '/mnt/bitcoind',
       readonly: true,
@@ -72,7 +77,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
       subcontainer: dashboard,
       exec: {
         command: ['node', '/opt/wallet-helper/wallet-helper.mjs'],
-        env: bitcoindRpc ? { BITCOIND_RPC: `http://${bitcoindRpc}` } : {},
+        env: bitcoindRpc
+          ? {
+              BITCOIND_RPC: `http://${bitcoindRpc}`,
+              BITCOIND_COOKIE: `/mnt/bitcoind/${rpcCookieName}`,
+            }
+          : {},
       },
       ready: {
         display: null,

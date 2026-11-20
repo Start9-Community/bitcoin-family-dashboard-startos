@@ -4,8 +4,8 @@
  *
  * Serves /api/wallet-balance (proxied by nginx) and /api/scan-status (read by
  * the package's health check). Derives addresses from output descriptors and
- * resolves balances from Bitcoin's RPC (BITCOIND_RPC, set by main.ts while the
- * bitcoind package is installed) or from public address APIs with
+ * resolves balances from Bitcoin's RPC (BITCOIND_RPC and its BITCOIND_COOKIE,
+ * set by main.ts while the bitcoind package is installed) or from public address APIs with
  * multi-provider fallback.
  */
 import { createHash, randomUUID } from 'node:crypto'
@@ -249,9 +249,7 @@ async function bitcoindRpc(method, params = [], wallet) {
   let auth
   try {
     const fs = await import('node:fs')
-    // The whole-volume mount resolves the chain-data dir directly at the
-    // mountpoint, so the cookie is at /mnt/bitcoind/.cookie (not main/.cookie).
-    const cookie = fs.readFileSync('/mnt/bitcoind/.cookie', 'utf8').trim()
+    const cookie = fs.readFileSync(process.env.BITCOIND_COOKIE, 'utf8').trim()
     auth = Buffer.from(cookie).toString('base64')
   } catch (e) {
     console.error(`Could not read bitcoind cookie: ${e.message}`)

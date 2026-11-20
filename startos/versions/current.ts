@@ -1,17 +1,23 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.2.2:6',
+  version: '0.2.2:7',
   releaseNotes: {
-    en_US:
-      'Uploaded profile pictures (custom avatars) are now stored on the service itself, so they survive reboots, browser cache clears and port changes, appear on every device, and are included in backups. Previously they lived only in each browser and were lost.',
-    es_ES:
-      'Las fotos de perfil subidas (avatares personalizados) ahora se guardan en el propio servicio: sobreviven a reinicios, borrados de caché y cambios de puerto, aparecen en todos los dispositivos y se incluyen en las copias de seguridad. Antes solo vivían en cada navegador y se perdían.',
-    de_DE:
-      'Hochgeladene Profilbilder (benutzerdefinierte Avatare) werden jetzt auf dem Dienst selbst gespeichert: Sie überstehen Neustarts, Cache-Löschungen und Portwechsel, erscheinen auf jedem Gerät und sind in Backups enthalten. Zuvor lebten sie nur in jedem Browser und gingen verloren.',
-    pl_PL:
-      'Przesłane zdjęcia profilowe (niestandardowe awatary) są teraz przechowywane w samej usłudze: przetrwają ponowne uruchomienia, czyszczenie pamięci podręcznej i zmiany portów, są widoczne na każdym urządzeniu i uwzględniane w kopiach zapasowych. Wcześniej istniały tylko w każdej przeglądarce i przepadały.',
-    fr_FR: `Les photos de profil téléversées (avatars personnalisés) sont désormais stockées sur le service lui-même : elles survivent aux redémarrages, aux vidages de cache et aux changements de port, apparaissent sur chaque appareil et sont incluses dans les sauvegardes. Auparavant, elles ne vivaient que dans chaque navigateur et étaient perdues.`,
+    en_US: `Requires StartOS 0.4.2 or later.
+
+The dashboard's access to Bitcoin's data is limited to its RPC credentials. If a watch-only wallet reads its balance from Bitcoin on this server, update Bitcoin when StartOS asks.`,
+    es_ES: `Requiere StartOS 0.4.2 o posterior.
+
+El acceso del panel a los datos de Bitcoin se limita a sus credenciales RPC. Si una billetera de solo lectura obtiene su saldo de Bitcoin en este servidor, actualiza Bitcoin cuando StartOS lo pida.`,
+    de_DE: `Erfordert StartOS 0.4.2 oder neuer.
+
+Der Zugriff des Dashboards auf die Daten von Bitcoin ist auf dessen RPC-Zugangsdaten beschränkt. Wenn eine Watch-only-Wallet ihren Kontostand von Bitcoin auf diesem Server liest, aktualisiere Bitcoin, sobald StartOS dazu auffordert.`,
+    pl_PL: `Wymaga StartOS 0.4.2 lub nowszego.
+
+Dostęp panelu do danych Bitcoina ogranicza się do jego danych uwierzytelniających RPC. Jeśli portfel tylko do odczytu pobiera saldo z Bitcoina na tym serwerze, zaktualizuj Bitcoina, gdy StartOS o to poprosi.`,
+    fr_FR: `Nécessite StartOS 0.4.2 ou une version ultérieure.
+
+L’accès du tableau de bord aux données de Bitcoin se limite à ses identifiants RPC. Si un portefeuille en lecture seule lit son solde depuis Bitcoin sur ce serveur, mettez Bitcoin à jour lorsque StartOS le demande.`,
   },
   migrations: {
     up: async ({ effects }) => {},
